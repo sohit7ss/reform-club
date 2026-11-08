@@ -1,0 +1,3 @@
+import { z } from 'zod'
+export const applicationSchema=z.object({fullName:z.string().min(2).max(80),branch:z.string().min(2).max(80),academicYear:z.string().min(1).max(20),email:z.string().email(),phone:z.string().regex(/^[+0-9][0-9 -]{7,14}$/,'Enter a valid phone number'),preferredRole:z.enum(['co_coordinator','team_head','team_member']),preferredTeam:z.string().max(50).optional(),reason:z.string().min(20).max(1500),skills:z.string().min(5).max(1500),portfolioLink:z.string().url().optional().or(z.literal('')),additionalInfo:z.string().max(1000).optional(),honeypot:z.string().max(0).optional()})
+export default applicationSchema

@@ -1,0 +1,17 @@
+{
+  "name": "reform-scripts",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "dotenv": "^16.4.5"
+  },
+  "scripts": {
+    "bootstrap": "node bootstrap-coordinator.js",
+    "claims": "node set-admin-claims.js",
+    "seed": "node seed-demo-data.js",
+    "export": "node export-firestore.js",
+    "backfill": "node backfill-fields.js"
+  }
+}

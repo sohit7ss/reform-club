@@ -1,0 +1,8 @@
+import React,{useEffect,useState} from 'react'
+import PageShell from '../../components/layout/PageShell.jsx'
+import { noticeService } from '../../services/noticeService.js'
+import { NOTICE_TYPES } from '../../config/constants.js'
+import { daysUntil, formatDate } from '../../utils/formatDate.js'
+import Badge from '../../components/ui/Badge.jsx'
+import Tabs from '../../components/ui/Tabs.jsx'
+export default function NoticeBoard(){ const [notices,setNotices]=useState([]); const [type,setType]=useState('all'); useEffect(()=>{ (async()=>setNotices(await noticeService.listPublished()))() },[]); const shown=notices.filter(n=>type==='all'||n.type===type); return (<PageShell title="Notice Board" description="RE:FORM notice board — recruitment, events, workshops, competitions and deadlines."><h1 className="font-display text-3xl font-black mb-4">Notice Board</h1><Tabs tabs={[{id:'all',label:'All'},...NOTICE_TYPES.map(t=>({id:t,label:t}))]} active={type} onChange={setType} /><div className="space-y-4">{shown.map(n=><article key={n.id} className={`collage-card rounded-2xl p-5 ${n.important?'border-2 border-mustard':''}`}><div className="flex gap-2 flex-wrap"><Badge>{n.type}</Badge>{n.important && <Badge tone="mustard">Important</Badge>}{n.pinned && <Badge tone="teal">Pinned</Badge>}</div><h2 className="font-display text-xl font-bold mt-2">{n.title}</h2><p className="mt-1">{n.body}</p>{n.deadline && <p className="text-sm font-bold mt-2">Deadline: {formatDate(n.deadline)} ({daysUntil(n.deadline)} days left)</p>}</article>)}{!shown.length && <p>No notices in this category.</p>}</div></PageShell>) }

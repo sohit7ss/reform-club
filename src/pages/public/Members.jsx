@@ -1,0 +1,5 @@
+import React,{useEffect,useState} from 'react'
+import { Link } from 'react-router-dom'
+import PageShell from '../../components/layout/PageShell.jsx'
+import { memberProfileService } from '../../services/memberProfileService.js'
+export default function Members(){ const [list,setList]=useState([]); useEffect(()=>{ (async()=>setList(await memberProfileService.listPublished()))() },[]); return (<PageShell title="Members" description="Published RE:FORM member profiles."><h1 className="font-display text-3xl font-black mb-4">Members</h1><p className="mb-4 text-sm">Only profiles members opted to publish are shown here.</p><div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">{list.map(m=><Link key={m.id} to={`/members/${m.id}`} className="collage-card rounded-2xl p-5 block"><img src={m.photoUrl} alt={m.name} loading="lazy" className="w-20 h-20 rounded-full object-cover mb-3" /><h2 className="font-bold">{m.name}</h2><p className="text-sm">{m.team} · {m.designation}</p></Link>)}</div>{!list.length && <p>No published profiles yet.</p>}</PageShell>) }

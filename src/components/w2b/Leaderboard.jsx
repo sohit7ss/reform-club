@@ -1,0 +1,2 @@
+import React from 'react'
+export default function Leaderboard({rows}){ if(!rows?.length) return <p>No leaderboard data yet.</p>; return (<ol className="space-y-2">{rows.map((r,i)=><li key={r.uid||r.participantName||r.name||i} className="flex justify-between bg-white border border-sand rounded-xl px-4 py-2"><span><strong>#{i+1}</strong> {r.participantName||r.name}{r.challengeCount>1 && <span className="text-sm"> · {r.challengeCount} challenges</span>}</span><span className="font-bold">{r.score??r.points} pts</span></li>)}</ol>) }

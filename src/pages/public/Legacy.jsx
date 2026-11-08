@@ -1,0 +1,4 @@
+import React,{useEffect,useState} from 'react'
+import PageShell from '../../components/layout/PageShell.jsx'
+import { legacyService } from '../../services/legacyService.js'
+export default function Legacy(){ const [items,setItems]=useState([]); useEffect(()=>{ (async()=>setItems(await legacyService.list()))() },[]); return (<PageShell title="Our Legacy" description="RE:FORM legacy — previous coordinators, achievements and memories."><h1 className="font-display text-3xl font-black mb-4">Our Legacy</h1><div className="space-y-4">{[...items].sort((a,b)=>b.year-a.year).map(e=><article key={e.id} className="collage-card rounded-2xl p-5"><p className="font-display text-2xl font-bold text-terracotta">{e.year}</p><h2 className="font-bold text-lg">{e.title}</h2><p className="text-sm">{e.description}</p><p className="text-xs mt-1 capitalize">{e.kind}</p></article>)}</div></PageShell>) }

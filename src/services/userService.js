@@ -1,0 +1,5 @@
+import { collection, doc, getDocs, query, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { db, isFirebaseConfigured } from '../config/firebase.js'
+import { auditService } from './auditService.js'
+export const userService={ async listAdmins(){ if(!isFirebaseConfigured) return [{uid:'demo-coordinator',email:'coordinator@example.invalid',name:'Demo Coordinator',role:'coordinator',active:true,permissions:{gallery:true,events:true,notices:true,team:true,membership:true,applications:true,waste2best:true,constitution:true,comments:true,legacy:true,blog:true}}]; const s=await getDocs(query(collection(db,'admins'),orderBy('email'))); return s.docs.map(d=>({uid:d.id,...d.data()})) } , async updateAdmin(uid,data,actor){ if(!isFirebaseConfigured) return Object.assign({uid:uid},data); await updateDoc(doc(db,'admins',uid),Object.assign({},data,{updatedAt:serverTimestamp()})); if(actor) await auditService.log(actor,'update','admins',uid,'admin updated'); return Object.assign({uid:uid},data) } }
+export default userService

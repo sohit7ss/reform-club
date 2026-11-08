@@ -1,0 +1,3 @@
+import React from 'react'
+import Badge from '../ui/Badge.jsx'
+export default function SubmissionCard({s}){ return (<article className="collage-card rounded-2xl overflow-hidden"><img src={s.imageUrls?.[0]||'https://picsum.photos/seed/w2b/800/600'} alt={s.projectTitle} loading="lazy" className="w-full h-44 object-cover" /><div className="p-4"><h3 className="font-display font-bold">{s.projectTitle}</h3><p className="text-sm">by {s.participantName}</p><p className="text-sm mt-1">{s.description}</p><div className="flex gap-2 mt-2"><Badge>{s.status}</Badge><span className="text-sm font-bold">♥ {s.voteCount||0} · Judge {s.judgeScore??'—'}</span></div></div></article>) }

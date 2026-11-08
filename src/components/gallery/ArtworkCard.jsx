@@ -1,0 +1,7 @@
+import React from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Heart } from 'lucide-react'
+import { sanitizeText } from '../../utils/sanitize.js'
+import { formatDate } from '../../utils/formatDate.js'
+import Badge from '../ui/Badge.jsx'
+export default function ArtworkCard({art,onOpen,onLike,liked}){ const reduce=useReducedMotion(); return (<motion.article className="collage-card rounded-2xl overflow-hidden" initial={reduce?false:{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true,margin:'-40px'}} transition={{duration:0.4}} whileHover={reduce?undefined:{y:-4,boxShadow:'0 12px 24px rgba(0,0,0,0.12)'}}><button onClick={onOpen} className="block w-full text-left" aria-label={`View ${art.title}`}><img src={art.thumbUrl||art.imageUrl} alt={art.title} loading="lazy" width="400" height="300" className="w-full h-52 object-cover" /></button><div className="p-4"><h3 className="font-display font-bold">{sanitizeText(art.title)}</h3><p className="text-sm">by {sanitizeText(art.artistName)} · {formatDate(art.uploadedAt)}</p><div className="flex justify-between items-center mt-2"><Badge>{art.category.replace('_',' ')}</Badge><button onClick={onLike} aria-label={`Like ${art.title}`} aria-pressed={!!liked} className="flex items-center gap-1 text-sm font-bold"><Heart size={16} fill={liked?'#C96F4A':'none'} /> {art.likeCount||0}</button></div>{art.description && <p className="text-sm mt-2">{sanitizeText(art.description)}</p>}</div></motion.article>) }

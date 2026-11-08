@@ -1,0 +1,27 @@
+node_modules
+dist
+.env
+scripts/.env
+serviceAccountKey.json
+scripts/serviceAccountKey.json
+.DS_Store
+*.local
+# Dependencies
+node_modules
+scripts/node_modules
+# Build output
+dist
+
+# Env files and secrets — never commit these
+.env
+scripts/.env
+serviceAccountKey.json
+scripts/serviceAccountKey.json
+
+# Firebase local cache and emulator logs
+.firebase
+firestore-debug.log
+
+# OS / editor files
+.DS_Store
+*.local

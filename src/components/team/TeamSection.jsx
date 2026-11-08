@@ -1,0 +1,3 @@
+import React from 'react'
+import MemberCard from './MemberCard.jsx'
+export default function TeamSection({team,members}){ const head=members.find(m=>m.designation==='team_head'); const rest=members.filter(m=>m.designation!=='team_head'); return (<section className="collage-card rounded-2xl p-5 mb-6" aria-labelledby={`team-${team.id}`}><h3 id={`team-${team.id}`} className="font-display text-2xl font-bold">{team.name}</h3><p className="text-sm mb-4">{team.responsibility}</p>{head && <p className="mb-3"><strong>Head:</strong> {head.name}</p>}<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{rest.map(m=><MemberCard key={m.id} m={m} />)}{!rest.length && !head && <p className="text-sm">Members to be announced.</p>}</div></section>) }

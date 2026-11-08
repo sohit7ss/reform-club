@@ -1,0 +1,2 @@
+import React from 'react'
+export default function Input({label,id,error,type,value,onChange,placeholder,required,name,disabled}){ return (<div className="mb-3">{label ? <label htmlFor={id} className="block font-bold text-sm mb-1">{label}</label> : null}<input id={id} name={name||id} type={type||'text'} value={value} onChange={onChange} placeholder={placeholder||''} required={required||false} disabled={disabled||false} className="w-full border-2 border-sand rounded-xl px-3 py-2 bg-white" />{error && <p role="alert" className="text-red-700 text-sm">{error}</p>}</div>) }

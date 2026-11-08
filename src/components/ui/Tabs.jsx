@@ -1,0 +1,2 @@
+import React from 'react'
+export default function Tabs({tabs,active,onChange}){ return (<div role="tablist" className="flex flex-wrap gap-2 mb-6">{tabs.map(t=><button key={t.id} role="tab" aria-selected={active===t.id} onClick={()=>onChange(t.id)} className={`px-4 py-2 rounded-full font-bold border-2 ${active===t.id?'bg-clay text-white border-clay':'bg-white border-sand'}`}>{t.label}</button>)}</div>) }

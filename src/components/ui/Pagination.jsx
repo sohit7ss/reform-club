@@ -1,0 +1,2 @@
+import React from 'react'
+export default function Pagination({page,setPage,hasMore}){ return (<div className="flex gap-2 justify-center mt-6"><button disabled={page<=1} onClick={()=>setPage(page-1)} className="px-4 py-2 rounded-full border-2 disabled:opacity-40">Previous</button><span className="py-2 font-bold">Page {page}</span><button disabled={!hasMore} onClick={()=>setPage(page+1)} className="px-4 py-2 rounded-full border-2 disabled:opacity-40">Next</button></div>) }

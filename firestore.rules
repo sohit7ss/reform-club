@@ -1,0 +1,207 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function adminDoc() { return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data; }
+    function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && adminDoc().active == true; }
+    function isCoordinator() { return isAdmin() && adminDoc().role == 'coordinator'; }
+    function can(p) { return isCoordinator() || (isAdmin() && adminDoc().permissions.get(p, false) == true); }
+    function str(v, min, max) { return v is string && v.size() >= min && v.size() <= max; }
+    function emailOk(v) { return v is string && v.matches('^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$'); }
+    function onlyKeys(keys) { return request.resource.data.keys().hasOnly(keys); }
+    function hasAll(keys) { return request.resource.data.keys().hasAll(keys); }
+    function settings() { return get(/databases/$(database)/documents/siteSettings/main).data; }
+    function roleOpen(roleKey) { return settings().applicationsOpen[roleKey] == true; }
+    // Fix 1: a field that must be absent or empty on create (admin-only fields).
+    function absentOrEmpty(k) { return !(k in request.resource.data) || request.resource.data[k] == null || request.resource.data[k] == '' || request.resource.data[k] == []; }
+    // Fix 1: optional string field with a max length (absent/null allowed).
+    function optStr(k, min, max) { return !(k in request.resource.data) || request.resource.data[k] == null || str(request.resource.data[k], min, max); }
+    // Fix 12: empty string or an http(s) URL. Regexes are anchored at both
+    // ends so they hold whether matches() is full-match or prefix-match.
+    function urlOk(v) { return v == '' || (v is string && v.matches('^https?://.*$')); }
+    function httpsOk(v) { return v == '' || (v is string && v.matches('^https://.*$')); }
+    function optUrl(k) { return !(k in request.resource.data) || request.resource.data[k] == null || urlOk(request.resource.data[k]); }
+    function optHttpsUrl(k) { return !(k in request.resource.data) || request.resource.data[k] == null || httpsOk(request.resource.data[k]); }
+    function optUrlMax(k, max) { return !(k in request.resource.data) || request.resource.data[k] == null || (request.resource.data[k] is string && urlOk(request.resource.data[k]) && request.resource.data[k].size() <= max); }
+    // Fix 12: optional list whose entries are all empty-or-URL strings.
+    function urlListOk(k) { return !(k in request.resource.data) || request.resource.data[k] == null || (request.resource.data[k] is list && (request.resource.data[k].size() == 0 || request.resource.data[k].join(',').matches('^https?://[^,]*(,https?://[^,]*)*$'))); }
+    // Hardening: optional bool field (absent/null allowed, otherwise a bool).
+    function optBool(k) { return !(k in request.resource.data) || request.resource.data[k] == null || request.resource.data[k] is bool; }
+    // Last round: shared field checks for blogPosts create (member + admin
+    // branches share everything except status values and publishedAt).
+    function blogFieldsOk() { return onlyKeys(['title','slug','category','authorName','authorUid','status','content','coverUrl','coverPath','publishedAt','createdAt','updatedAt']) && hasAll(['title','slug','content','authorUid','status']) && str(request.resource.data.title, 3, 120) && request.resource.data.slug is string && request.resource.data.slug.matches('^[a-z0-9-]{3,80}$') && str(request.resource.data.content, 1, 20000) && request.resource.data.authorUid == request.auth.uid && optStr('authorName', 0, 80) && (!('category' in request.resource.data) || request.resource.data.category == null || request.resource.data.category in ['tutorial','craft_idea','diy','tip','experience','process']) && optStr('coverPath', 0, 300) && optHttpsUrl('coverUrl'); }
+    // Last round: publishedAt on an admin blog create — absent, null, a
+    // timestamp, or the date string the admin page sends ('YYYY-MM-DD').
+    function optPublishedAt() { return !('publishedAt' in request.resource.data) || request.resource.data.publishedAt == null || request.resource.data.publishedAt is timestamp || (request.resource.data.publishedAt is string && request.resource.data.publishedAt.size() <= 30); }
+    // Hardening: optional list whose entries are all empty-or-https strings.
+    function httpsListOk(k) { return !(k in request.resource.data) || request.resource.data[k] == null || (request.resource.data[k] is list && (request.resource.data[k].size() == 0 || request.resource.data[k].join(',').matches('^https://[^,]*(,https://[^,]*)*$'))); }
+    // Fix 1: interests — 1-10 items, each 1-40 chars. Firestore rules have no
+    // list iteration, so the per-item bound is enforced with a joined regex
+    // (an interest containing a comma is rejected by this check).
+    function interestsOk(v) { return v is list && v.size() >= 1 && v.size() <= 10 && v.join(',').matches('^[^,]{1,40}(,[^,]{1,40}){0,9}$'); }
+    // Fix 5 + 12: imageUrls — 1-5 entries, each an http(s) URL under 500 chars
+    // ("https://" is 8 chars, so at most 491 chars may follow the scheme).
+    function imageUrlsOk(v) { return v is list && v.size() >= 1 && v.size() <= 5 && v.join(',').matches('^https?://[^,]{0,491}(,https?://[^,]{0,491}){0,4}$'); }
+    // Fix 2: append-only history lists. oldList/newList treat a missing field
+    // as []. growsOnly requires the new list to contain every old entry and
+    // not shrink; appendedByCaller requires the first and last newly appended
+    // entries to carry the caller's uid (rules have no iteration, so the
+    // middle entries of a multi-entry append are covered only by growsOnly).
+    function oldList(k) { return k in resource.data ? resource.data[k] : []; }
+    function newList(k) { return k in request.resource.data ? request.resource.data[k] : []; }
+    function growsOnly(k) { return newList(k).size() >= oldList(k).size() && newList(k).hasAll(oldList(k)); }
+    function appendedByCaller(k) { return newList(k).size() == oldList(k).size() || (newList(k)[oldList(k).size()].byUid == request.auth.uid && newList(k)[newList(k).size() - 1].byUid == request.auth.uid); }
+    match /{document=**} { allow read, write: if false; }
+    match /admins/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isCoordinator());
+      allow create, update, delete: if isCoordinator();
+    }
+    match /siteSettings/{docId} {
+      allow read: if true;
+      allow create, update: if isCoordinator();
+      allow delete: if false;
+    }
+    match /artworks/{id} {
+      // Last round: can('gallery') first, so an admin get() on a missing id
+      // succeeds (returns not-exists) instead of erroring on resource.data.
+      // A public get() on a missing id is still denied; artworkService.get
+      // catches that and returns null (see DECISIONS item 26).
+      allow read: if can('gallery') || resource.data.status == 'approved' || (signedIn() && resource.data.artistUid == request.auth.uid);
+      allow create: if (can('gallery') && str(request.resource.data.title, 2, 100) && str(request.resource.data.artistName, 2, 80) && optStr('description', 0, 1000) && optHttpsUrl('imageUrl') && optHttpsUrl('thumbUrl') && absentOrEmpty('reviewedBy') && absentOrEmpty('rejectReason') && request.resource.data.createdAt == request.time && request.resource.data.uploadedAt == request.time) || (signedIn() && request.auth.token.email_verified == true && request.resource.data.status == 'pending' && request.resource.data.artistUid == request.auth.uid && request.resource.data.source == 'member' && request.resource.data.category in ['painting','sketching','craft','waste_to_best'] && str(request.resource.data.title, 2, 100) && str(request.resource.data.artistName, 2, 80) && optStr('description', 0, 1000) && optHttpsUrl('imageUrl') && optHttpsUrl('thumbUrl') && request.resource.data.likeCount == 0 && request.resource.data.featured == false && absentOrEmpty('reviewedBy') && absentOrEmpty('rejectReason') && request.resource.data.uploadedAt == request.time && request.resource.data.createdAt == request.time && request.resource.data.keys().hasOnly(['title','artistName','artistUid','category','description','imagePath','imageUrl','thumbUrl','status','rejectReason','featured','likeCount','source','uploadedAt','reviewedBy','reviewedAt','createdAt','updatedAt']));
+      allow update: if can('gallery') || (signedIn() && resource.data.status == 'approved' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount']) && ((request.resource.data.likeCount == resource.data.likeCount + 1 && !exists(/databases/$(database)/documents/artworks/$(id)/likes/$(request.auth.uid)) && existsAfter(/databases/$(database)/documents/artworks/$(id)/likes/$(request.auth.uid))) || (request.resource.data.likeCount == resource.data.likeCount - 1 && exists(/databases/$(database)/documents/artworks/$(id)/likes/$(request.auth.uid)) && !existsAfter(/databases/$(database)/documents/artworks/$(id)/likes/$(request.auth.uid)))));
+      allow delete: if can('gallery');
+      match /likes/{uid} {
+        allow read: if signedIn() && (uid == request.auth.uid || can('gallery'));
+        allow create: if signedIn() && uid == request.auth.uid && request.resource.data.keys().hasOnly(['createdAt']) && request.resource.data.createdAt == request.time && getAfter(/databases/$(database)/documents/artworks/$(id)).data.likeCount == get(/databases/$(database)/documents/artworks/$(id)).data.likeCount + 1;
+        allow delete: if signedIn() && uid == request.auth.uid && getAfter(/databases/$(database)/documents/artworks/$(id)).data.likeCount == get(/databases/$(database)/documents/artworks/$(id)).data.likeCount - 1;
+        allow update: if false;
+      }
+    }
+    match /comments/{id} {
+      // Last round: can('comments') first — see artworks read above.
+      allow read: if can('comments') || resource.data.status == 'approved';
+      allow create: if signedIn() && request.auth.token.email_verified == true && request.resource.data.uid == request.auth.uid && request.resource.data.status == 'pending' && str(request.resource.data.text, 1, 500) && str(request.resource.data.authorName, 2, 80) && str(request.resource.data.artworkId, 1, 100) && request.resource.data.createdAt == request.time && request.resource.data.keys().hasOnly(['artworkId','uid','authorName','text','status','createdAt']);
+      allow update: if can('comments');
+      allow delete: if can('comments');
+    }
+    match /events/{id} {
+      // Last round: can('events') first — see artworks read above.
+      allow read: if can('events') || resource.data.published == true;
+      allow create, update: if can('events') && optHttpsUrl('registrationLink') && optHttpsUrl('posterUrl') && httpsListOk('photoUrls');
+      allow delete: if can('events');
+    }
+    match /notices/{id} {
+      // Last round: can('notices') first — see artworks read above.
+      allow read: if can('notices') || resource.data.published == true;
+      allow create, update: if can('notices');
+      allow delete: if can('notices');
+    }
+    match /teams/{teamId} {
+      allow read: if true;
+      allow create, update: if can('team');
+      allow delete: if isCoordinator();
+    }
+    match /termRecords/{termId} {
+      allow read: if true;
+      allow create, update: if can('team');
+      allow delete: if isCoordinator();
+    }
+    match /teamMembers/{id} {
+      allow read: if true;
+      allow create: if can('team') && optUrl('photoUrl') && optUrl('socialLink') && request.resource.data.archived is bool;
+      allow update: if can('team') && optUrl('photoUrl') && optUrl('socialLink') && optBool('archived');
+      allow delete: if can('team');
+    }
+    match /membershipSubmissions/{id} {
+      allow create: if onlyKeys(['fullName','branch','academicYear','email','phone','interests','skills','portfolioLink','intro','status','notes','createdAt','updatedAt']) && hasAll(['fullName','branch','academicYear','email','phone','interests','intro','status']) && str(request.resource.data.fullName, 2, 80) && str(request.resource.data.branch, 2, 80) && str(request.resource.data.academicYear, 1, 20) && emailOk(request.resource.data.email) && str(request.resource.data.phone, 8, 16) && interestsOk(request.resource.data.interests) && optStr('skills', 0, 500) && optUrlMax('portfolioLink', 500) && str(request.resource.data.intro, 10, 1000) && request.resource.data.status == 'new' && absentOrEmpty('notes') && settings().membershipOpen == true;
+      allow read: if can('membership');
+      allow update: if can('membership') && optStr('notes', 0, 1000);
+      allow delete: if isCoordinator();
+    }
+    match /applications/{id} {
+      allow create: if onlyKeys(['fullName','branch','academicYear','email','phone','preferredRole','preferredTeam','reason','skills','portfolioLink','additionalInfo','status','interviewDate','reviewNotes','statusHistory','createdAt','updatedAt']) && hasAll(['fullName','branch','academicYear','email','phone','preferredRole','reason','skills','status']) && str(request.resource.data.fullName, 2, 80) && str(request.resource.data.branch, 2, 80) && str(request.resource.data.academicYear, 1, 20) && emailOk(request.resource.data.email) && str(request.resource.data.phone, 8, 16) && str(request.resource.data.reason, 20, 1500) && str(request.resource.data.skills, 5, 1500) && optStr('preferredTeam', 0, 50) && optUrlMax('portfolioLink', 500) && optStr('additionalInfo', 0, 1000) && request.resource.data.status == 'received' && request.resource.data.preferredRole in ['co_coordinator','team_head','team_member'] && ((request.resource.data.preferredRole == 'co_coordinator' && roleOpen('coAdmin')) || (request.resource.data.preferredRole == 'team_head' && roleOpen('teamHead')) || (request.resource.data.preferredRole == 'team_member' && roleOpen('teamMember'))) && absentOrEmpty('reviewNotes') && absentOrEmpty('statusHistory') && absentOrEmpty('interviewDate');
+      allow read: if can('applications');
+      allow update: if can('applications') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','interviewDate','reviewNotes','statusHistory','updatedAt']) && request.resource.data.status in ['received','under_review','interview_scheduled','selected','not_selected'] && growsOnly('reviewNotes') && growsOnly('statusHistory') && appendedByCaller('reviewNotes') && appendedByCaller('statusHistory');
+      allow delete: if isCoordinator();
+    }
+    match /contactMessages/{id} {
+      allow create: if onlyKeys(['name','email','subject','message','status','createdAt','updatedAt']) && hasAll(['name','email','subject','message','status']) && str(request.resource.data.name, 2, 80) && emailOk(request.resource.data.email) && str(request.resource.data.subject, 2, 120) && str(request.resource.data.message, 10, 2000) && request.resource.data.status == 'unread';
+      allow read, update: if can('contact');
+      allow delete: if isCoordinator();
+    }
+    match /constitution/{id} {
+      allow read: if true;
+      allow create, update: if can('constitution') && optUrl('fileUrl');
+      allow delete: if isCoordinator();
+    }
+    match /challenges/{id} {
+      // Last round: drafts are readable only by waste2best admins. Public
+      // reads see open, voting and closed. challengeService.list() filters
+      // to those three statuses, and getLeaderboard() goes through list(),
+      // so public queries never match a draft (an unfiltered public query
+      // would be denied outright once a draft exists).
+      allow read: if resource.data.status in ['open','voting','closed'] || can('waste2best');
+      allow create, update: if can('waste2best');
+      allow delete: if isCoordinator();
+      match /submissions/{sid} {
+        // Last round: the sid == uid check comes first and never touches
+        // resource.data, so getDoc on your own not-yet-existing submission
+        // succeeds (returns not-exists) — that is the "already submitted"
+        // pre-check. The approved-status check stays last.
+        allow read: if (signedIn() && sid == request.auth.uid) || can('waste2best') || resource.data.status == 'approved';
+        allow create: if signedIn() && sid == request.auth.uid && request.auth.token.email_verified == true && get(/databases/$(database)/documents/challenges/$(id)).data.status == 'open' && request.resource.data.uid == request.auth.uid && request.resource.data.status == 'pending' && str(request.resource.data.participantName, 2, 80) && str(request.resource.data.branch, 2, 80) && str(request.resource.data.academicYear, 1, 20) && str(request.resource.data.projectTitle, 2, 120) && str(request.resource.data.description, 10, 2000) && str(request.resource.data.howMade, 10, 2000) && str(request.resource.data.materialsUsed, 2, 1000) && imageUrlsOk(request.resource.data.imageUrls) && request.resource.data.imagePaths is list && request.resource.data.imagePaths.size() >= 1 && request.resource.data.imagePaths.size() <= 5 && request.resource.data.voteCount == 0 && (!('judgeScore' in request.resource.data) || request.resource.data.judgeScore == null) && request.resource.data.keys().hasOnly(['participantName','branch','academicYear','uid','projectTitle','description','howMade','materialsUsed','imagePaths','imageUrls','status','voteCount','judgeScore','createdAt','updatedAt']);
+        allow update: if can('waste2best') || (signedIn() && get(/databases/$(database)/documents/challenges/$(id)).data.status == 'voting' && resource.data.status == 'approved' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['voteCount']) && request.resource.data.voteCount == resource.data.voteCount + 1 && !exists(/databases/$(database)/documents/challenges/$(id)/submissions/$(sid)/votes/$(request.auth.uid)) && !exists(/databases/$(database)/documents/challenges/$(id)/voters/$(request.auth.uid)) && existsAfter(/databases/$(database)/documents/challenges/$(id)/submissions/$(sid)/votes/$(request.auth.uid)) && existsAfter(/databases/$(database)/documents/challenges/$(id)/voters/$(request.auth.uid)) && getAfter(/databases/$(database)/documents/challenges/$(id)/voters/$(request.auth.uid)).data.submissionId == sid);
+        allow delete: if can('waste2best');
+        match /votes/{uid} {
+          allow read: if signedIn() && (uid == request.auth.uid || can('waste2best'));
+          // Last round: the vote doc must be backed by a voters doc for
+          // THIS submission, so one batch cannot vote for two submissions.
+          allow create: if signedIn() && uid == request.auth.uid && request.resource.data.keys().hasOnly(['createdAt']) && request.resource.data.createdAt == request.time && get(/databases/$(database)/documents/challenges/$(id)).data.status == 'voting' && get(/databases/$(database)/documents/challenges/$(id)/submissions/$(sid)).data.uid != request.auth.uid && getAfter(/databases/$(database)/documents/challenges/$(id)/submissions/$(sid)).data.voteCount == get(/databases/$(database)/documents/challenges/$(id)/submissions/$(sid)).data.voteCount + 1 && existsAfter(/databases/$(database)/documents/challenges/$(id)/voters/$(request.auth.uid)) && getAfter(/databases/$(database)/documents/challenges/$(id)/voters/$(request.auth.uid)).data.submissionId == sid;
+          allow delete: if false;
+          allow update: if false;
+        }
+      }
+      match /voters/{uid} {
+        allow read: if signedIn() && (uid == request.auth.uid || can('waste2best'));
+        // Last round: the voters doc must be backed by a vote doc for the
+        // submission it names (same binding as votes/{uid} create, mirrored).
+        allow create: if signedIn() && uid == request.auth.uid && request.resource.data.keys().hasOnly(['submissionId','createdAt']) && request.resource.data.createdAt == request.time && request.resource.data.submissionId is string && get(/databases/$(database)/documents/challenges/$(id)).data.status == 'voting' && get(/databases/$(database)/documents/challenges/$(id)/submissions/$(request.resource.data.submissionId)).data.uid != request.auth.uid && getAfter(/databases/$(database)/documents/challenges/$(id)/submissions/$(request.resource.data.submissionId)).data.voteCount == get(/databases/$(database)/documents/challenges/$(id)/submissions/$(request.resource.data.submissionId)).data.voteCount + 1 && existsAfter(/databases/$(database)/documents/challenges/$(id)/submissions/$(request.resource.data.submissionId)/votes/$(request.auth.uid));
+        allow delete: if false;
+        allow update: if false;
+      }
+    }
+    match /recognitions/{id} {
+      allow read: if true;
+      allow create, update: if can('gallery') && optUrl('photoUrl');
+      allow delete: if can('gallery');
+    }
+    match /legacyEntries/{id} {
+      allow read: if true;
+      allow create, update: if can('legacy') && urlListOk('imageUrls');
+      allow delete: if can('legacy');
+    }
+    match /memberProfiles/{id} {
+      // Last round: can('team') first — see artworks read above.
+      allow read: if can('team') || resource.data.published == true;
+      allow create, update: if can('team') && optUrl('photoUrl');
+      allow delete: if can('team');
+    }
+    match /blogPosts/{id} {
+      // Last round: can('blog') first — see artworks read above.
+      allow read: if can('blog') || resource.data.status == 'published' || (signedIn() && resource.data.authorUid == request.auth.uid);
+      // Last round: admin branch added. Admins with the blog permission use
+      // the same field checks as members but may publish (status
+      // 'published') and may send publishedAt; members stay draft/pending
+      // only with publishedAt absent. BlogAdmin sends publishedAt (a
+      // 'YYYY-MM-DD' string) when creating with status 'published'.
+      allow create: if (can('blog') && blogFieldsOk() && request.resource.data.status in ['draft','pending','published'] && optPublishedAt()) || (signedIn() && request.auth.token.email_verified == true && blogFieldsOk() && request.resource.data.status in ['draft','pending'] && absentOrEmpty('publishedAt'));
+      allow update: if can('blog');
+      allow delete: if can('blog');
+    }
+    match /auditLogs/{id} {
+      allow create: if isAdmin() && onlyKeys(['actorUid','actorEmail','action','collection','docId','summary','createdAt']) && hasAll(['actorUid','actorEmail','action','collection','docId','summary','createdAt']) && request.resource.data.actorUid == request.auth.uid && request.resource.data.actorEmail == request.auth.token.email && str(request.resource.data.actorUid, 1, 128) && emailOk(request.resource.data.actorEmail) && str(request.resource.data.action, 1, 50) && str(request.resource.data.collection, 1, 50) && str(request.resource.data.docId, 1, 100) && str(request.resource.data.summary, 0, 500) && request.resource.data.createdAt == request.time;
+      allow read: if isCoordinator();
+      allow update, delete: if false;
+    }
+  }
+}

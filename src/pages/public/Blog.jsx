@@ -1,0 +1,7 @@
+import React,{useEffect,useState} from 'react'
+import { Link } from 'react-router-dom'
+import PageShell from '../../components/layout/PageShell.jsx'
+import { blogService } from '../../services/blogService.js'
+import { BLOG_CATEGORIES } from '../../config/constants.js'
+import Tabs from '../../components/ui/Tabs.jsx'
+export default function Blog(){ const [posts,setPosts]=useState([]); const [cat,setCat]=useState('all'); useEffect(()=>{ (async()=>setPosts(await blogService.listPublished()))() },[]); const shown=cat==='all'?posts:posts.filter(p=>p.category===cat); return (<PageShell title="Blog" description="RE:FORM blog — tutorials, craft ideas, DIY guides and experiences."><h1 className="font-display text-3xl font-black mb-4">Blog &amp; Creative Resources</h1><Tabs tabs={[{id:'all',label:'All'},...BLOG_CATEGORIES.map(c=>({id:c,label:c.replace('_',' ')}))]} active={cat} onChange={setCat} /><div className="grid sm:grid-cols-2 gap-5">{shown.map(p=><Link key={p.id} to={`/blog/${p.slug}`} className="collage-card rounded-2xl overflow-hidden block"><img src={p.coverUrl} alt={p.title} loading="lazy" className="w-full h-44 object-cover" /><div className="p-4"><h2 className="font-display font-bold text-lg">{p.title}</h2><p className="text-sm">by {p.authorName} · {p.category}</p></div></Link>)}</div>{!shown.length && <p>No posts in this category yet. Members can submit a post for approval via the admin team.</p>}</PageShell>) }

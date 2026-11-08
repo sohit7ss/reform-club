@@ -1,0 +1,3 @@
+import { z } from 'zod'
+export const eventSchema=z.object({title:z.string().min(2).max(120),description:z.string().min(5).max(4000),venue:z.string().min(2).max(120),startDate:z.string().min(1),endDate:z.string().min(1),participationDetails:z.string().max(2000).optional(),registrationLink:z.string().url().optional().or(z.literal('')),status:z.enum(['upcoming','ongoing','completed']).optional(),published:z.boolean().optional(),highlights:z.string().max(500).optional(),posterUrl:z.string().url().optional().or(z.literal('')),posterPath:z.string().max(300).optional(),photoUrls:z.array(z.string()).optional()})
+export default eventSchema

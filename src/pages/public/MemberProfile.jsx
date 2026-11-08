@@ -1,0 +1,5 @@
+import React,{useEffect,useState} from 'react'
+import { useParams, Link } from 'react-router-dom'
+import PageShell from '../../components/layout/PageShell.jsx'
+import { memberProfileService } from '../../services/memberProfileService.js'
+export default function MemberProfile(){ const {id}=useParams(); const [m,setM]=useState(null); useEffect(()=>{ (async()=>setM(await memberProfileService.get(id)))() },[id]); if(!m||!m.published) return <PageShell title="Member"><p>Profile not found or not published.</p><p><Link to="/members" className="text-clay font-bold">← Members</Link></p></PageShell>; return (<PageShell title={m.name}><p><Link to="/members" className="text-clay font-bold">← Members</Link></p><img src={m.photoUrl} alt={m.name} className="w-32 h-32 rounded-full object-cover my-4" /><h1 className="font-display text-3xl font-black">{m.name}</h1><p>{m.team} · {m.designation}</p><p className="mt-3"><strong>Interests:</strong> {(m.interests||[]).join(', ')}</p><p><strong>Skills:</strong> {(m.skills||[]).join(', ')}</p><p><strong>Contributions:</strong> {(m.contributions||[]).join('; ')}</p></PageShell>) }

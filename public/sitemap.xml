@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://example.invalid/</loc></url>
+  <url><loc>https://example.invalid/about</loc></url>
+  <url><loc>https://example.invalid/team</loc></url>
+  <url><loc>https://example.invalid/gallery</loc></url>
+  <url><loc>https://example.invalid/events</loc></url>
+  <url><loc>https://example.invalid/join</loc></url>
+  <url><loc>https://example.invalid/apply</loc></url>
+  <url><loc>https://example.invalid/contact</loc></url>
+  <url><loc>https://example.invalid/notices</loc></url>
+  <url><loc>https://example.invalid/waste-to-best</loc></url>
+  <url><loc>https://example.invalid/constitution</loc></url>
+  <url><loc>https://example.invalid/legacy</loc></url>
+  <url><loc>https://example.invalid/members</loc></url>
+  <url><loc>https://example.invalid/blog</loc></url>
+</urlset>

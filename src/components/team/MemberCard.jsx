@@ -1,0 +1,3 @@
+import React from 'react'
+import { sanitizeText, safeUrl } from '../../utils/sanitize.js'
+export default function MemberCard({m}){ return (<article className="collage-card rounded-2xl p-4 text-center"><div className="w-20 h-20 mx-auto rounded-full bg-blush flex items-center justify-center font-display text-2xl font-bold">{(m.name||'?').slice(0,1)}</div><h3 className="font-bold mt-2">{sanitizeText(m.name)}</h3><p className="text-sm text-terracotta font-bold capitalize">{(m.designation||'').replaceAll('_',' ')}</p>{m.bio && <p className="text-sm mt-1">{sanitizeText(m.bio)}</p>}{safeUrl(m.socialLink) && <p className="text-sm mt-2"><a href={safeUrl(m.socialLink)} target="_blank" rel="noopener noreferrer" className="text-clay font-bold">Social profile</a></p>}</article>) }

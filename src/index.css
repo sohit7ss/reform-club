@@ -1,0 +1,11 @@
+
+@tailwind base; @tailwind components; @tailwind utilities;
+:root{ --paper:#FDF8EF; --cream:#FFF9EC; --ink:#2B2118; --clay:#C96F4A; --terracotta:#B4552D; --sage:#7A8B6F; --mustard:#E9A13B; --teal:#2F7D7A; --blush:#F2C9B8; --sand:#EAD9B8; }
+html{scroll-behavior:smooth}
+body{background:var(--paper); color:var(--ink); font-family:'Nunito',system-ui,sans-serif; background-image:radial-gradient(rgba(43,33,24,.05) 1px, transparent 1px); background-size:22px 22px;}
+h1,h2,h3,.font-display{font-family:'Fraunces',Georgia,serif}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--mustard); outline-offset:2px}
+.tape{position:relative}.tape::before{content:'';position:absolute;top:-10px;left:50%;transform:translateX(-50%) rotate(-2deg);width:90px;height:22px;background:rgba(233,161,59,.55);border-left:1px dashed rgba(255,255,255,.7);border-right:1px dashed rgba(255,255,255,.7)}
+.stitch{border:2px dashed rgba(201,111,74,.45); border-radius:1rem}
+.collage-card{background:#fff;border:1px solid #EAD9B8; box-shadow:0 4px 0 rgba(43,33,24,.08),0 12px 24px -12px rgba(43,33,24,.25)}
+@media (prefers-reduced-motion: reduce){ *,*::before,*::after{animation-duration:.01ms!important; transition-duration:.01ms!important; scroll-behavior:auto!important} }
